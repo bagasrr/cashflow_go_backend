@@ -12,6 +12,8 @@ type Wallet struct {
 
 	UserID 		uuid.UUID `gorm:"type:uuid; not null" json:"user_id"`
 
+	GroupID 	uuid.UUID `gorm:"type:uuid; null" json:"group_id"`
+
 	Name 		string `json:"name"`
 	Balance 	float64 `gorm:"default:0" json:"balance"`
 	Currency 	string `gorm:"type:varchar(10); default:'IDR'" json:"currency"`

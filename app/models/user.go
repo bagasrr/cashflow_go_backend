@@ -7,13 +7,23 @@ import (
 	"gorm.io/gorm"
 )
 
+type UserRole int8
 // 1. Konstanta Role (Hanya untuk Jabatan/Otoritas)
 const (
-    RoleOwner int8 = 0 // Dewa
-    RoleAdmin int8 = 1 // Bisa atur user
-    RoleUser  int8 = 2 // Pengguna aplikasi
+    UserOwner UserRole = 1 // Dewa
+    UserAdmin UserRole = 2 // Bisa atur user
+    UserDefault UserRole = 3 // Pengguna aplikasi
 )
-
+func (u *UserRole) String() string {
+    switch *u {
+    case UserOwner:
+        return "Owner"
+    case UserAdmin:
+        return "Admin"
+    default:
+        return "User"
+    }
+}
 // 2. Konstanta Subscription (Untuk Fitur)
 const (
     PlanFree    string = "free"
@@ -27,14 +37,14 @@ type User struct {
     Email     string         `json:"email"`
     Password  string         `json:"password"`
     
-    UserRole  int8           `gorm:"default:2;not null" json:"user_role"`
+    UserRole  *UserRole           `gorm:"default:3;not null" json:"user_role"`
     
     SubscriptionPlan string  `gorm:"default:'free';type:varchar(20)" json:"subscription_plan"`
     
     SubscriptionExp  *time.Time `json:"subscription_exp"`
-	Wallets   []Wallet       `gorm:"foreignKey:UserID" json:"wallets,omitempty"`
-	Transactions []Transaction `gorm:"foreignKey:UserID" json:"transactions,omitempty"`
-
+    Wallets      []Wallet      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"wallets,omitempty"`
+    Transactions []Transaction `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE" json:"transactions,omitempty"`
+   
     CreatedAt time.Time      `json:"created_at"`
     UpdatedAt time.Time      `json:"updated_at"`
     DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
@@ -46,6 +56,9 @@ func (u *User) IsPremium() bool {
 }
 
 // Helper: Cek apakah user Admin atau Owner
-func (u *User) HasAccess(requiredRole int8) bool {
-	return u.UserRole <= requiredRole
+func (u *User) HasAccess(requiredRole UserRole) bool {
+    if u.UserRole == nil {
+        return false
+    }
+	return *u.UserRole <= requiredRole
 }
