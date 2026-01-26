@@ -7,14 +7,35 @@ import (
 	"log"
 	"os"
 
+	fiberSwagger "github.com/gofiber/swagger"
+
+	_ "cashflow-backend/docs"
+
 	"github.com/gofiber/fiber/v2"
 )
+
+// @title           Cashflow API Documentation
+// @version         1.0
+// @description     Dokumentasi API untuk aplikasi Cashflow.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name    Bagas Ramadhan
+// @contact.email   support@bagas.com
+
+// @license.name    Apache 2.0
+// @license.url     http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host            localhost:3000
+// @BasePath        /api
 
 func main(){
 	configs.ConnectDB()
 
 	app := fiber.New()
 
+	// Route Swagger
+    // Nanti akses di: http://localhost:3000/swagger/index.html
+	app.Get("/swagger/*", fiberSwagger.HandlerDefault)
 	
 	routes.SetupRoutes(app)
 	

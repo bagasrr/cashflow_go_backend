@@ -1,0 +1,66 @@
+basePath: /api
+definitions:
+  controllers.GroupInput:
+    properties:
+      group_type:
+        type: string
+      members:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      name:
+        type: string
+    required:
+    - group_type
+    - members
+    - name
+    type: object
+host: localhost:3000
+info:
+  contact:
+    email: support@bagas.com
+    name: Bagas Ramadhan
+  description: Dokumentasi API untuk aplikasi Cashflow.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Cashflow API Documentation
+  version: "1.0"
+paths:
+  /groups:
+    post:
+      consumes:
+      - application/json
+      description: Membuat group dan otomatis menjadikan pembuat sebagai Role Owner
+        (Group).
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Data Group
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.GroupInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Membuat Group Baru
+      tags:
+      - Group
+swagger: "2.0"

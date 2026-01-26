@@ -25,6 +25,18 @@ type GroupResponse struct {
     Type    string                `json:"type"`
     Members []MemberResponse `json:"members"`
 }
+
+// CreateGroup godoc
+// @Summary      Membuat Group Baru
+// @Description  Membuat group dan otomatis menjadikan pembuat sebagai Role Owner (Group).
+// @Tags         Group
+// @Accept       json
+// @Produce      json
+// @Param        Authorization header string true "Bearer Token"
+// @Param        request body controllers.GroupInput true "Data Group"
+// @Success      201  {object} map[string]interface{}
+// @Failure      400  {object} map[string]interface{}
+// @Router       /groups [post]
 func CreateGroup(c *fiber.Ctx) error {
     userID, err := getUserIDFromToken(c)
     if err != nil {
