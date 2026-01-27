@@ -19,14 +19,18 @@ import (
 // @description     Dokumentasi API untuk aplikasi Cashflow.
 // @termsOfService  http://swagger.io/terms/
 
-// @contact.name    Bagas Ramadhan
-// @contact.email   support@bagas.com
+// @contact.name    Bagas Ramadhan Rusnadi
+// @contact.email   bagasramadhan239@gmail.com
 
 // @license.name    Apache 2.0
 // @license.url     http://www.apache.org/licenses/LICENSE-2.0.html
 
 // @host            localhost:3000
 // @BasePath        /api
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Masukkan token dengan format: "Bearer <token_jwt_disini>"
 
 func main(){
 	configs.ConnectDB()

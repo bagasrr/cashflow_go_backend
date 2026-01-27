@@ -11,8 +11,8 @@ const docTemplate = `{
         "title": "{{.Title}}",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
-            "name": "Bagas Ramadhan",
-            "email": "support@bagas.com"
+            "name": "Bagas Ramadhan Rusnadi",
+            "email": "bagasramadhan239@gmail.com"
         },
         "license": {
             "name": "Apache 2.0",
@@ -23,9 +23,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/groups": {
+        "/auth/login": {
             "post": {
-                "description": "Membuat group dan otomatis menjadikan pembuat sebagai Role Owner (Group).",
+                "description": "Endpoint untuk login",
                 "consumes": [
                     "application/json"
                 ],
@@ -33,19 +33,69 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Group"
+                    "Auth"
+                ],
+                "summary": "Login",
+                "parameters": [
+                    {
+                        "description": "Login Input",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.LoginInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.LoginSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.LoginError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.LoginError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ServerError"
+                        }
+                    }
+                }
+            }
+        },
+        "/groups": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "User membuat grup baru dan otomatis menjadi owner.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Groups"
                 ],
                 "summary": "Membuat Group Baru",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer Token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Data Group",
+                        "description": "Data Group (Minimal 1 member)",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -58,12 +108,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
+                            "$ref": "#/definitions/controllers.GroupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Error validasi / ID member salah",
+                        "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "401": {
+                        "description": "Token tidak valid",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -96,6 +159,181 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "controllers.GroupResponse": {
+            "type": "object",
+            "properties": {
+                "group_id": {
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.MemberResponse"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.LoginError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "Record Not Found"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Email atau Password Salah"
+                }
+            }
+        },
+        "controllers.LoginInput": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "username@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 5,
+                    "example": "password"
+                }
+            }
+        },
+        "controllers.LoginSuccess": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Login Success"
+                },
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njk4MTE0NTIsInJvbGUiOjMsInVzZXJfaWQiOiJkN"
+                }
+            }
+        },
+        "controllers.MemberResponse": {
+            "type": "object",
+            "properties": {
+                "member_id": {
+                    "type": "string"
+                },
+                "role": {
+                    "description": "Kita pake string (Owner/Member) bukan angka",
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/controllers.UserResponse"
+                }
+            }
+        },
+        "controllers.ServerError": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Server Error"
+                }
+            }
+        },
+        "controllers.UserResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "role_text": {
+                    "type": "string"
+                },
+                "subscription_exp": {
+                    "type": "string"
+                },
+                "subscription_plan": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "user_role": {
+                    "$ref": "#/definitions/models.UserRole"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "wallet": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.WalletResponse"
+                    }
+                }
+            }
+        },
+        "controllers.WalletResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "wallet_id": {
+                    "type": "string"
+                },
+                "wallet_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UserRole": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                1,
+                2,
+                3
+            ],
+            "x-enum-comments": {
+                "UserAdmin": "Bisa atur user",
+                "UserDefault": "Pengguna aplikasi",
+                "UserOwner": "Dewa"
+            },
+            "x-enum-descriptions": [
+                "Dewa",
+                "Bisa atur user",
+                "Pengguna aplikasi"
+            ],
+            "x-enum-varnames": [
+                "UserOwner",
+                "UserAdmin",
+                "UserDefault"
+            ]
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Masukkan token dengan format: \"Bearer \u003ctoken_jwt_disini\u003e\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`

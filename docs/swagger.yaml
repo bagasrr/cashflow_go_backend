@@ -16,11 +16,126 @@ definitions:
     - members
     - name
     type: object
+  controllers.GroupResponse:
+    properties:
+      group_id:
+        type: string
+      members:
+        items:
+          $ref: '#/definitions/controllers.MemberResponse'
+        type: array
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  controllers.LoginError:
+    properties:
+      error:
+        example: Record Not Found
+        type: string
+      message:
+        example: Email atau Password Salah
+        type: string
+    type: object
+  controllers.LoginInput:
+    properties:
+      email:
+        example: username@example.com
+        type: string
+      password:
+        example: password
+        minLength: 5
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  controllers.LoginSuccess:
+    properties:
+      message:
+        example: Login Success
+        type: string
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njk4MTE0NTIsInJvbGUiOjMsInVzZXJfaWQiOiJkN
+        type: string
+    type: object
+  controllers.MemberResponse:
+    properties:
+      member_id:
+        type: string
+      role:
+        description: Kita pake string (Owner/Member) bukan angka
+        type: string
+      user:
+        $ref: '#/definitions/controllers.UserResponse'
+    type: object
+  controllers.ServerError:
+    properties:
+      message:
+        example: Server Error
+        type: string
+    type: object
+  controllers.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      role_text:
+        type: string
+      subscription_exp:
+        type: string
+      subscription_plan:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+      user_role:
+        $ref: '#/definitions/models.UserRole'
+      username:
+        type: string
+      wallet:
+        items:
+          $ref: '#/definitions/controllers.WalletResponse'
+        type: array
+    type: object
+  controllers.WalletResponse:
+    properties:
+      balance:
+        type: number
+      currency:
+        type: string
+      wallet_id:
+        type: string
+      wallet_name:
+        type: string
+    type: object
+  models.UserRole:
+    enum:
+    - 1
+    - 2
+    - 3
+    format: int32
+    type: integer
+    x-enum-comments:
+      UserAdmin: Bisa atur user
+      UserDefault: Pengguna aplikasi
+      UserOwner: Dewa
+    x-enum-descriptions:
+    - Dewa
+    - Bisa atur user
+    - Pengguna aplikasi
+    x-enum-varnames:
+    - UserOwner
+    - UserAdmin
+    - UserDefault
 host: localhost:3000
 info:
   contact:
-    email: support@bagas.com
-    name: Bagas Ramadhan
+    email: bagasramadhan239@gmail.com
+    name: Bagas Ramadhan Rusnadi
   description: Dokumentasi API untuk aplikasi Cashflow.
   license:
     name: Apache 2.0
@@ -29,19 +144,47 @@ info:
   title: Cashflow API Documentation
   version: "1.0"
 paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Endpoint untuk login
+      parameters:
+      - description: Login Input
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LoginInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.LoginSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controllers.LoginError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.LoginError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/controllers.ServerError'
+      summary: Login
+      tags:
+      - Auth
   /groups:
     post:
       consumes:
       - application/json
-      description: Membuat group dan otomatis menjadikan pembuat sebagai Role Owner
-        (Group).
+      description: User membuat grup baru dan otomatis menjadi owner.
       parameters:
-      - description: Bearer Token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Data Group
+      - description: Data Group (Minimal 1 member)
         in: body
         name: request
         required: true
@@ -53,14 +196,31 @@ paths:
         "201":
           description: Created
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/controllers.GroupResponse'
         "400":
-          description: Bad Request
+          description: Error validasi / ID member salah
           schema:
             additionalProperties: true
             type: object
+        "401":
+          description: Token tidak valid
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
       summary: Membuat Group Baru
       tags:
-      - Group
+      - Groups
+securityDefinitions:
+  BearerAuth:
+    description: 'Masukkan token dengan format: "Bearer <token_jwt_disini>"'
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

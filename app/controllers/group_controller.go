@@ -23,19 +23,21 @@ type GroupResponse struct {
     GroupID string                `json:"group_id"`
     Name    string                `json:"name"`
     Type    string                `json:"type"`
-    Members []MemberResponse `json:"members"`
+    Members []MemberResponse        `json:"members"`
 }
 
 // CreateGroup godoc
 // @Summary      Membuat Group Baru
-// @Description  Membuat group dan otomatis menjadikan pembuat sebagai Role Owner (Group).
-// @Tags         Group
+// @Description  User membuat grup baru dan otomatis menjadi owner.
+// @Tags         Groups
 // @Accept       json
 // @Produce      json
-// @Param        Authorization header string true "Bearer Token"
-// @Param        request body controllers.GroupInput true "Data Group"
-// @Success      201  {object} map[string]interface{}
-// @Failure      400  {object} map[string]interface{}
+// @Security     BearerAuth
+// @Param        request body controllers.GroupInput true "Data Group (Minimal 1 member)"
+// @Success      201  {object} controllers.GroupResponse
+// @Failure      400  {object} map[string]interface{} "Error validasi / ID member salah"
+// @Failure      401  {object} map[string]interface{} "Token tidak valid"
+// @Failure      500  {object} map[string]interface{} "Server error"
 // @Router       /groups [post]
 func CreateGroup(c *fiber.Ctx) error {
     userID, err := getUserIDFromToken(c)

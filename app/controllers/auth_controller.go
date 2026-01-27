@@ -11,23 +11,55 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type LoginInput struct {
+	Email string `json:"email" example:"username@example.com" validate:"required,email"`
+	Password string `json:"password" example:"password" validate:"required,min=5"`	
+}
+type LoginSuccess struct{
+	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njk4MTE0NTIsInJvbGUiOjMsInVzZXJfaWQiOiJkN"`
+	Message string `json:"message" example:"Login Success"`
+}
+type LoginError struct{
+	Message string `json:"message" example:"Email atau Password Salah"`
+	Error string	`json:"error,omitempty" example:"Record Not Found"`
+}
+type ServerError struct{
+	Message string `json:"message" example:"Server Error"`
+}
+// Login
+// @Summary Login
+// @Description Endpoint untuk login
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body LoginInput true "Login Input"
+// @Success 200 {object} controllers.LoginSuccess
+// @Failure 400 {object} controllers.LoginError
+// @Failure 401 {object} controllers.LoginError
+// @Failure 500 {object} controllers.ServerError
+// @Router /auth/login [post]
 func Login(c *fiber.Ctx) error {
-	type LoginInput struct {
-		Email string `json:"email"`
-		Password string `json:"password"`
-	}
 	var input LoginInput
 	if err := c.BodyParser(&input); err != nil {
-		return c.Status(400).JSON(fiber.Map{"message": "Input Tidak Valid"})
+		return c.Status(400).JSON(LoginError{
+			Message: "Input Tidak Valid",
+			Error : err.Error(),
+	})
 	}
 
 	var user models.User
 	if err := configs.DB.Where("email = ?", input.Email).First(&user).Error; err!= nil {
-		return c.Status(401).JSON(fiber.Map{"message" : "email atau password salah"})
+		return c.Status(401).JSON(LoginError{
+			Message: "Email Atau Password Salah",
+			Error : err.Error(),
+		})
 	}
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password))
 	if err != nil {
-		return c.Status(401).JSON(fiber.Map{"message" : "email atau password salah"})
+		return c.Status(401).JSON(LoginError{
+			Message: "Email Atau Password Salah",
+			Error : err.Error(),
+		})
 	}
 
 	// generate Jwt Tokern
@@ -46,8 +78,8 @@ func Login(c *fiber.Ctx) error {
     }
 
     // 5. Kirim Token ke User
-    return c.JSON(fiber.Map{
-        "message": "Login sukses",
-        "token":   t, // Ini "karcis" yang harus disimpan user
+	return c.JSON(LoginSuccess{
+		Token: t,
+		Message: "Login Success",
     })
 }
