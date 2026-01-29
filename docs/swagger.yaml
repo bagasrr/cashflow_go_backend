@@ -29,6 +29,24 @@ definitions:
       type:
         type: string
     type: object
+  controllers.InputRegisterValid:
+    properties:
+      email:
+        example: johndoe@example.com
+        type: string
+      password:
+        example: john123
+        minLength: 5
+        type: string
+      username:
+        example: johndoe
+        minLength: 5
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
   controllers.LoginError:
     properties:
       error:
@@ -70,6 +88,20 @@ definitions:
       user:
         $ref: '#/definitions/controllers.UserResponse'
     type: object
+  controllers.RegisterFailed:
+    properties:
+      message:
+        example: Email atau Username sudah terdaftar
+        type: string
+    type: object
+  controllers.RegisterSuccess:
+    properties:
+      data:
+        $ref: '#/definitions/controllers.UserResponse'
+      message:
+        example: Register Berhasil
+        type: string
+    type: object
   controllers.ServerError:
     properties:
       message:
@@ -79,22 +111,32 @@ definitions:
   controllers.UserResponse:
     properties:
       created_at:
+        example: "2023-06-30T00:00:00Z"
         type: string
       email:
+        example: johndoe@example.com
         type: string
       role_text:
+        example: User
         type: string
       subscription_exp:
+        example: "2023-06-30T00:00:00Z"
         type: string
       subscription_plan:
+        example: free
         type: string
       updated_at:
+        example: "2023-06-30T00:00:00Z"
         type: string
       user_id:
+        example: a0b1c2d3-e4f5-g6h7-i8j9-k0l1m2n3
         type: string
       user_role:
-        $ref: '#/definitions/models.UserRole'
+        allOf:
+        - $ref: '#/definitions/models.UserRole'
+        example: 3
       username:
+        example: JohnDoe
         type: string
       wallet:
         items:
@@ -104,12 +146,16 @@ definitions:
   controllers.WalletResponse:
     properties:
       balance:
+        example: 100000
         type: number
       currency:
+        example: IDR
         type: string
       wallet_id:
+        example: a0b1c2d3-e4f5-g6h7-i8j9-k0l1m2n3
         type: string
       wallet_name:
+        example: wallet1
         type: string
     type: object
   models.UserRole:

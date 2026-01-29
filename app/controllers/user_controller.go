@@ -13,22 +13,22 @@ import (
 
 var validate = validator.New()
 
-type InputValid struct {
-    Username string `json:"username" validate:"required,min=5,alphanum"`
-    Email    string `json:"email" validate:"required,email"`
-    Password string `json:"password" validate:"required,min=5"`
+type InputRegisterValid struct {
+    Username string `json:"username" validate:"required,min=5,alphanum" example:"johndoe"`
+    Email    string `json:"email" validate:"required,email" example:"johndoe@example.com"`
+    Password string `json:"password" validate:"required,min=5" example:"john123"`
 }
 
 type UserResponse struct {
-    UserID           string           `json:"user_id"`
-    Username         string           `json:"username"`
-    Email            string           `json:"email"`
-    UserRole         models.UserRole  `json:"user_role"` 
-    RoleText         string           `json:"role_text"`
-    SubscriptionPlan string           `json:"subscription_plan"`
-    SubscriptionExp  *time.Time       `json:"subscription_exp"`
-    CreatedAt        time.Time        `json:"created_at"`
-    UpdatedAt        time.Time        `json:"updated_at"`
+    UserID           string           `json:"user_id" example:"a0b1c2d3-e4f5-g6h7-i8j9-k0l1m2n3"`
+    Username         string           `json:"username" example:"JohnDoe"`
+    Email            string           `json:"email" example:"johndoe@example.com"`
+    UserRole         models.UserRole  `json:"user_role" example:"3"` 
+    RoleText         string           `json:"role_text" example:"User"`
+    SubscriptionPlan string           `json:"subscription_plan" example:"free"`
+    SubscriptionExp  *time.Time       `json:"subscription_exp" example:"2023-06-30T00:00:00Z"`
+    CreatedAt        time.Time        `json:"created_at" example:"2023-06-30T00:00:00Z"`
+    UpdatedAt        time.Time        `json:"updated_at" example:"2023-06-30T00:00:00Z"`
     Wallets          []WalletResponse `json:"wallet"`
 }
 type UpgradePlanInput struct {
@@ -36,25 +36,53 @@ type UpgradePlanInput struct {
 }
 
 type WalletResponse struct {
-    WalletID string  `json:"wallet_id"`
-    Name     string  `json:"wallet_name"`
-    Balance  float64 `json:"balance"`
-    Currency string  `json:"currency"`
+    WalletID string  `json:"wallet_id" example:"a0b1c2d3-e4f5-g6h7-i8j9-k0l1m2n3"`
+    Name     string  `json:"wallet_name" example:"wallet1"`
+    Balance  float64 `json:"balance" example:"100000"`
+    Currency string  `json:"currency" example:"IDR"`
+}
+type RegisterFailed struct {
+    Message string `json:"message" example:"Email atau Username sudah terdaftar"`
+}
+type RegisterSuccess struct {
+    Message string `json:"message" example:"Register Berhasil"`
+    Data    UserResponse `json:"data"`
 }
 
+// Register User
+// @Summary Register User
+// @Description Endpoint untuk register user
+// @Tags User
+// @Accept json
+// @Produce json
+// @Param request body InputRegisterValid true "Input Valid"
+// @Success 201 {object} RegisterSuccess  
+// @Failure 400 {object} RegisterFailed    
+// @Failure 409 {object} RegisterFailed
+// @Failure 500 {object} RegisterFailed
 func RegisterUser(c *fiber.Ctx) error {
-    var input InputValid
+    var input InputRegisterValid
     if err := c.BodyParser(&input); err != nil {
-        return c.Status(400).JSON(fiber.Map{"error": "Input tidak valid"})
+        return c.Status(400).JSON(RegisterFailed{
+            Message: "Input Tidak Valid",
+        })
     }
     
     // ... (Validasi Duplikat & Validator Struct tetap sama) ...
     var existingUser models.User
     if err := configs.DB.Where("email = ? OR username = ?", input.Email, input.Username).First(&existingUser).Error; err == nil {
-        return c.Status(409).JSON(fiber.Map{"error": "Email atau Username sudah terdaftar"})
+        return c.Status(409).JSON(RegisterFailed{
+            Message: "Email atau Username sudah terdaftar",
+        })
     }
     if err := validate.Struct(input); err != nil {
-        return c.Status(400).JSON(fiber.Map{"error": "Data tidak lengkap", "detail": err.Error()})
+        return c.Status(400).JSON(
+            // Debugging
+            // fiber.Map{"error": "Data tidak lengkap", "detail": err.Error()},
+            RegisterFailed{
+                Message: "Data tidak lengkap",
+            },
+        )
     }
 
     hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
@@ -62,6 +90,7 @@ func RegisterUser(c *fiber.Ctx) error {
     // FIX 1: Siapkan variabel role default (UserDefault = 3)
     // Jangan langsung assign angka, harus via variabel biar bisa diambil alamat memorinya (&)
     defaultRole := models.UserDefault
+    
 
     user := models.User{
         Username: input.Username,
@@ -70,12 +99,22 @@ func RegisterUser(c *fiber.Ctx) error {
         UserRole: &defaultRole, 
         SubscriptionPlan: models.PlanFree,
     }
+    roleVal := models.UserDefault // Default 3
+    if user.UserRole != nil {
+        roleVal = *user.UserRole // Ambil nilai aslinya (Dereference)
+    }
 
     tx := configs.DB.Begin()
     if err := tx.Create(&user).Error; err != nil {
         tx.Rollback()
         fmt.Println(err)
-        return c.Status(500).JSON(fiber.Map{"message": "Gagal mendaftar", "error" : err.Error()})
+        return c.Status(500).JSON(
+            // Debugging
+            // fiber.Map{"message": "Gagal mendaftar", "error" : err.Error()},
+            RegisterFailed{
+                Message: "Gagal mendaftar",
+            },
+        )
     }
 
     defaultWallet := models.Wallet{
@@ -84,19 +123,45 @@ func RegisterUser(c *fiber.Ctx) error {
         Balance:  0,
         Currency: "IDR",
     }
+    walletRes := WalletResponse{
+        WalletID: defaultWallet.WalletID.String(), // Pastikan convert UUID ke string
+        Name:     defaultWallet.Name,
+        Balance:  defaultWallet.Balance,
+        Currency: defaultWallet.Currency,
+    }
 
     if err := tx.Create(&defaultWallet).Error; err != nil {
         tx.Rollback()
-        return c.Status(500).JSON(fiber.Map{"error": "Gagal membuat wallet default"})
+        return c.Status(500).JSON(
+            // Debugging
+            // fiber.Map{"error": "Gagal membuat wallet default"}
+            RegisterFailed{
+                Message: "Gagal membuat wallet default",
+            },
+        )
     }
 
     tx.Commit()
 
-    user.Password = ""
-    return c.Status(201).JSON(fiber.Map{
-        "message": "Registrasi berhasil",
-        "data":    user,
-    })
+    // user.Password = ""
+    userResponse := UserResponse{
+        UserID:           user.UserID.String(), // Convert UUID ke string
+        Username:         user.Username,
+        Email:            user.Email,
+        UserRole:         roleVal,
+        RoleText:         "User", // Karena register pasti User biasa
+        SubscriptionPlan: user.SubscriptionPlan,
+        SubscriptionExp:  user.SubscriptionExp,
+        CreatedAt:        user.CreatedAt,
+        UpdatedAt:        user.UpdatedAt,
+        Wallets:          []WalletResponse{walletRes}, // Masukin wallet tadi
+    }
+    return c.Status(201).JSON(
+        RegisterSuccess{
+            Message: "Register Berhasil",
+            Data : userResponse,
+        },
+    )
 }
 
 func GetMyProfile(c *fiber.Ctx) error {

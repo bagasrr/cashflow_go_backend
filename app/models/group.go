@@ -11,25 +11,25 @@ import (
 type GroupRole int8
 
 const (
-    GroupOwner  GroupRole = 0
-    GroupAdmin  GroupRole = 1
-    GroupParticipan GroupRole = 2
-    GroupViewer GroupRole = 3
+    GroupOwner  GroupRole = 1
+    GroupAdmin  GroupRole = 2
+    GroupParticipan GroupRole = 3
+    GroupViewer GroupRole = 4
 )
 
 // Helper String (Sudah Benar)
 func (r GroupRole) String() string {
     switch r {
     case GroupOwner:
-        return "Owner"
+        return "Group Owner"
     case GroupAdmin:
-        return "Admin"
+        return "Group Admin"
     case GroupParticipan:
-        return "Member"
+        return "Group Member"
     case GroupViewer:
-        return "Viewer"
+        return "Group Viewer"
     default:
-        return "Unknown"
+        return "Group Unknown"
     }
 }
 

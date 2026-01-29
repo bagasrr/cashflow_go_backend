@@ -180,6 +180,30 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.InputRegisterValid": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "johndoe@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 5,
+                    "example": "john123"
+                },
+                "username": {
+                    "type": "string",
+                    "minLength": 5,
+                    "example": "johndoe"
+                }
+            }
+        },
         "controllers.LoginError": {
             "type": "object",
             "properties": {
@@ -239,6 +263,27 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.RegisterFailed": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Email atau Username sudah terdaftar"
+                }
+            }
+        },
+        "controllers.RegisterSuccess": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controllers.UserResponse"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Register Berhasil"
+                }
+            }
+        },
         "controllers.ServerError": {
             "type": "object",
             "properties": {
@@ -252,31 +297,44 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2023-06-30T00:00:00Z"
                 },
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "johndoe@example.com"
                 },
                 "role_text": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "User"
                 },
                 "subscription_exp": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2023-06-30T00:00:00Z"
                 },
                 "subscription_plan": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "free"
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2023-06-30T00:00:00Z"
                 },
                 "user_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "a0b1c2d3-e4f5-g6h7-i8j9-k0l1m2n3"
                 },
                 "user_role": {
-                    "$ref": "#/definitions/models.UserRole"
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.UserRole"
+                        }
+                    ],
+                    "example": 3
                 },
                 "username": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "JohnDoe"
                 },
                 "wallet": {
                     "type": "array",
@@ -290,16 +348,20 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "balance": {
-                    "type": "number"
+                    "type": "number",
+                    "example": 100000
                 },
                 "currency": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "IDR"
                 },
                 "wallet_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "a0b1c2d3-e4f5-g6h7-i8j9-k0l1m2n3"
                 },
                 "wallet_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "wallet1"
                 }
             }
         },

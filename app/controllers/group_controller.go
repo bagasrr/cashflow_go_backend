@@ -179,12 +179,17 @@ func GetAllGroups(c *fiber.Ctx) error {
         for _, m := range g.Members {
             membersRes = append(membersRes, MemberResponse{
                 MemberID: m.MemberID.String(),
-                // DISINI KITA PAKE FUNGSI String() TADI
                 Role:     m.Role.String(), // 0 jadi "Owner", 2 jadi "Member"
                 User: UserResponse{
                     UserID:   m.User.UserID.String(),
                     Username: m.User.Username,
                     Email:    m.User.Email,
+                    UserRole: *m.User.UserRole,
+                    RoleText: m.User.UserRole.String(),
+                    SubscriptionPlan: m.User.SubscriptionPlan,
+                    SubscriptionExp: m.User.SubscriptionExp,
+                    CreatedAt : m.User.CreatedAt,
+                    UpdatedAt: m.User.UpdatedAt,
                     // Password gak kita masukin, AMAN!
                 },
             })

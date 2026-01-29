@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	// "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -18,8 +19,7 @@ type TransactionInput struct {
     WalletID    string  `json:"wallet_id" validate:"required"` 
     Title       string  `json:"title" validate:"required"`
     Amount      float64 `json:"amount" validate:"required"`
-    Type        string  `json:"type" validate:"required,oneof=income expense"`      
-    SubType     string  `json:"sub_type" validate:"required"`
+    CategoryID  string    `json:"category_id" validate:"required,uuid"` 
     Description string  `json:"description"`
     Date        time.Time  `json:"date"`//validate:"required"` nti tambahin kalo udh ada frontend
 }
@@ -29,93 +29,100 @@ type TransactionInput struct {
 func CreateTransaction(c *fiber.Ctx) error {
     userID, err := getUserIDFromToken(c)
     if err != nil {
-        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-            "error": "Unauthorized / Invalid Token",
-        })
+        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
     }
 
     var input TransactionInput
     if err := c.BodyParser(&input); err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "message": "Format data tidak valid",
-            "error":   err.Error(),
-        })
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format data salah"})
     }
 
-    if err:= validate.Struct(input); err != nil{
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "message": "Data input tidak lengkap atau salah",
-            "error": err.Error(), 
-        })
+    if err := validate.Struct(input); err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
     }
 
-    parsedWalletID, err := uuid.Parse(input.WalletID)
+    // Parse UUID
+    walletUUID, _ := uuid.Parse(input.WalletID)
+    categoryUUID, err := uuid.Parse(input.CategoryID)
     if err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "error": "Wallet ID tidak valid (bukan format UUID)",
-        })
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Category ID tidak valid"})
     }
 
     tx := configs.DB.Begin()
 
+    // 1. Cek Wallet (Pastikan milik User)
+    // Note: Nanti logic ini perlu diupdate kalau mau support Group Wallet
     var wallet models.Wallet
-    if err := tx.Where("wallet_id = ? AND user_id = ?", parsedWalletID, userID).First(&wallet).Error; err != nil {
-        tx.Rollback() // Batalin
-        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-            "error": "Wallet tidak ditemukan atau bukan milik Anda",
-        })
-    }
-
-    if input.Type == "expense" && wallet.Balance < input.Amount {
-        tx.Rollback() // Batalin
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "error": "Saldo tidak mencukupi untuk melakukan transaksi ini",
-            "current_balance": wallet.Balance,
-        })
-    }
-
-    finalDate:= input.Date
-
-    if finalDate.IsZero(){
-        finalDate = time.Now()
-    }
-    newTransaction := models.Transaction{
-        UserID:      userID,         // Dari Token
-        WalletID:    parsedWalletID, // Dari hasil parsing UUID di atas
-        Title:       input.Title,
-        Amount:      input.Amount,
-        Type:        input.Type,
-        SubType:     input.SubType,
-        Description: input.Description,
-        Date:        finalDate,
-    }
-
-    if err := tx.Create(&newTransaction).Error; err != nil {
+    if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+    Where("wallet_id = ? AND user_id = ?", walletUUID, userID).
+    First(&wallet).Error; err != nil {
         tx.Rollback()
-        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-            "error": "Gagal menyimpan data transaksi",
-        })
+
+        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Wallet tidak ditemukan"})
     }
 
-    if input.Type == "expense" {
+    // 2. CEK KATEGORI (STEP BARU & KRUSIAL)
+    // Kita butuh tau apakah kategori ini 'expense' atau 'income'
+    var category models.Category
+    if err := tx.First(&category, categoryUUID).Error; err != nil {
+        tx.Rollback()
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Kategori tidak ditemukan"})
+    }
+
+    // 3. Logic Saldo Berdasarkan Kategori
+    // "category.Type" diambil dari Database, bukan input user. Lebih aman.
+    if category.Type == "expense" {
+        if wallet.Balance < input.Amount {
+            tx.Rollback()
+            return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+                "error": "Saldo tidak cukup",
+                "current_balance": wallet.Balance,
+            })
+        }
         wallet.Balance -= input.Amount
-    } else if input.Type == "income" {
+    } else {
         wallet.Balance += input.Amount
     }
 
+    // 4. Buat Object Transaction
+    finalDate := input.Date
+    if finalDate.IsZero() {
+        finalDate = time.Now()
+    }
+
+    newTransaction := models.Transaction{
+        UserID:      userID,
+        WalletID:    walletUUID,
+        CategoryID:  categoryUUID, // Simpan ID-nya saja
+        Amount:      input.Amount,
+        Description: input.Description, // Optional
+        Date:        finalDate,
+    }
+
+    // 5. Simpan Transaksi
+    if err := tx.Create(&newTransaction).Error; err != nil {
+        tx.Rollback()
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal simpan transaksi"})
+    }
+
+    // 6. Update Wallet Balance
     if err := tx.Save(&wallet).Error; err != nil {
         tx.Rollback()
-        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-            "error": "Gagal mengupdate saldo wallet",
-        })
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal update saldo"})
     }
 
     tx.Commit()
 
+    // Response Data (Biar Frontend seneng, kita balikin type-nya juga)
     return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-        "message":     "Transaksi berhasil dibuat",
-        "data":        newTransaction,
-        "new_balance": wallet.Balance, 
+        "message": "Berhasil",
+        "data": fiber.Map{
+            "transaction_id": newTransaction.TransactionID,
+            "amount":         newTransaction.Amount,
+            "category_name":  category.Name, 
+            "type":           category.Type, 
+            "new_balance":    wallet.Balance,
+        },
     })
 }
 
