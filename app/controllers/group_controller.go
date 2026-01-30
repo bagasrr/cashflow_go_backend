@@ -26,6 +26,11 @@ type GroupResponse struct {
     Members []MemberResponse        `json:"members"`
 }
 
+type AddPeopleInput struct {
+    GroupID string `json:"group_id" validate:"required,uuid"`
+    Email   string `json:"email" validate:"required,email"`
+}
+
 // CreateGroup godoc
 // @Summary      Membuat Group Baru
 // @Description  User membuat grup baru dan otomatis menjadi owner.
@@ -208,4 +213,93 @@ func GetAllGroups(c *fiber.Ctx) error {
         "message": "Berhasil mendapatkan daftar group",
         "data":    response,
     })
+}
+
+
+// Add People to Group By email
+// @Summary      Menambahkan anggota baru ke Group 
+// @Description  Menambahkan anggota baru ke Group berdasarkan email
+// @Tags         Groups
+// @Accept       json
+// @Produce      json
+// @Param        request body AddPeopleInput true "AddPeopleInput"
+// @Security     BearerAuth
+// @Success      200  {object} map[string]interface{} "Berhasil menambahkan anggota"    
+// @Failure      400  {object} map[string]interface{} "Input Tidak Valid"
+// @Failure      401  {object} map[string]interface{} "Unauthorized / Invalid Token"
+// @Failure      403  {object} map[string]interface{} "Anda bukan anggota grup ini"
+// @Failure      404  {object} map[string]interface{} "Email user tidak ditemukan di sistem."
+// @Failure      409  {object} map[string]interface{} "User ini sudah menjadi anggota grup."
+// @Failure      500  {object} map[string]interface{} "Gagal menambahkan anggota baru."
+// @Router       /groups/add-new-member [post]
+func AddPeopleToGroupByEmail(c *fiber.Ctx) error {
+    reqID, err := getUserIDFromToken(c)
+    if err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+            "error": "Unauthorized / Invalid Token",
+        })
+    }
+    var input AddPeopleInput
+    if err := c.BodyParser(&input).Error; err != nil{
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+            "message" : "Input Tidak Valid",
+        })
+    }
+
+    tx := configs.DB.Begin()
+    var isGroupMember models.GroupMember
+    if err := tx.Where("group_id = ? , user_id = ?", input.GroupID, reqID).First(&isGroupMember).Error; err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+            "message" : "Anda bukan anggota grup ini",
+        })
+    }
+
+    if isGroupMember.Role > models.GroupAdmin {
+        tx.Rollback()
+        return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+            "message" : "Akses Ditolak ! Hanya Admin atau Owner yang bisa menambahkan anggota.",
+        })
+    }
+
+    var targetUser models.User
+    if err := tx.Where("email = ? ", input.Email).First(&targetUser).Error ; err != nil {
+        tx.Rollback()
+        return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+            "message" : "Email user tidak ditemukan di sistem",
+        })
+    }
+
+    var existingMember models.GroupMember
+    check := tx.Where("group_id = ? , user_id = ?").First(&existingMember)
+    if check.RowsAffected > 0 {
+        tx.Rollback()
+        return c.Status(fiber.StatusConflict).JSON(fiber.Map{
+            "message" : "User ini sudah menjadi anggota grup",
+        })
+    }
+
+    newMember := models.GroupMember {
+        GroupID : isGroupMember.GroupID,
+        UserID : targetUser.UserID,
+        Role : models.GroupParticipan,
+    }
+
+    if err := tx.Create(&newMember).Error ; err!= nil {
+        tx.Rollback()
+        c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "message" : "Gagal menambahkan anggota baru",
+        })
+    }
+
+    tx.Commit()
+
+    return c.Status(fiber.StatusOK).JSON(fiber.Map{
+        "message" : "Berhasil menambahkan anggota",
+        "data" : fiber.Map{
+            "email" : targetUser.Email,
+            "username" : targetUser.Username,
+            "role" : newMember.Role,
+        },
+    })
+
 }

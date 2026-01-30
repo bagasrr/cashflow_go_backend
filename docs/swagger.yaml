@@ -1,5 +1,15 @@
 basePath: /api
 definitions:
+  controllers.AddPeopleInput:
+    properties:
+      email:
+        type: string
+      group_id:
+        type: string
+    required:
+    - email
+    - group_id
+    type: object
   controllers.GroupInput:
     properties:
       group_type:
@@ -261,6 +271,61 @@ paths:
       security:
       - BearerAuth: []
       summary: Membuat Group Baru
+      tags:
+      - Groups
+  /groups/add-new-member:
+    post:
+      consumes:
+      - application/json
+      description: Menambahkan anggota baru ke Group berdasarkan email
+      parameters:
+      - description: AddPeopleInput
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.AddPeopleInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Berhasil menambahkan anggota
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Input Tidak Valid
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized / Invalid Token
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Anda bukan anggota grup ini
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Email user tidak ditemukan di sistem.
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: User ini sudah menjadi anggota grup.
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Gagal menambahkan anggota baru.
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Menambahkan anggota baru ke Group
       tags:
       - Groups
 securityDefinitions:

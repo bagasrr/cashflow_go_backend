@@ -11,6 +11,7 @@ func GroupRoutes(api fiber.Router){
 	group := api.Group("/groups")
 	
 	group.Use(middleware.Protected())
-	group.Post("/", controllers.CreateGroup)
 	group.Get("/", controllers.GetAllGroups)
+	group.Post("/", controllers.CreateGroup)
+	group.Post("/add-new-member", controllers.AddPeopleToGroupByEmail)
 }
