@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"cashflow-backend/app/dto"
 	"cashflow-backend/app/models"
 	"cashflow-backend/pkg/configs"
 
@@ -17,7 +18,7 @@ type GroupInput struct {
 type MemberResponse struct{
 	MemberID string   `json:"member_id"`
     Role     string   `json:"role"` // Kita pake string (Owner/Member) bukan angka
-    User     UserResponse `json:"user"`
+    User     dto.UserResponse `json:"user"`
 }
 type GroupResponse struct {
     GroupID string                `json:"group_id"`
@@ -33,7 +34,7 @@ type AddPeopleInput struct {
 
 // CreateGroup godoc
 // @Summary      Membuat Group Baru
-// @Description  User membuat grup baru dan otomatis menjadi owner.
+// @Description  Endpoint untuk User membuat grup baru dan otomatis menjadi group-owner.
 // @Tags         Groups
 // @Accept       json
 // @Produce      json
@@ -185,7 +186,7 @@ func GetAllGroups(c *fiber.Ctx) error {
             membersRes = append(membersRes, MemberResponse{
                 MemberID: m.MemberID.String(),
                 Role:     m.Role.String(), // 0 jadi "Owner", 2 jadi "Member"
-                User: UserResponse{
+                User: dto.UserResponse{
                     UserID:   m.User.UserID.String(),
                     Username: m.User.Username,
                     Email:    m.User.Email,

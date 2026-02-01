@@ -30,10 +30,10 @@ func ConnectDB() {
     var err error
     
     // --- PERBAIKAN 1: Tambahkan Config DisableForeignKey... ---
-    DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-        DisableForeignKeyConstraintWhenMigrating: true, 
-    })
-	// DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+    // DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+    //     DisableForeignKeyConstraintWhenMigrating: true, 
+    // })
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
     if err != nil {
         log.Fatalf("Gagal koneksi ke Database! Error: %v", err)

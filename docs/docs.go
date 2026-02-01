@@ -82,7 +82,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "User membuat grup baru dan otomatis menjadi owner.",
+                "description": "Endpoint untuk User membuat grup baru dan otomatis menjadi group-owner.",
                 "consumes": [
                     "application/json"
                 ],
@@ -216,6 +216,162 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Endpoint untuk mendapatkan semua user aktif",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get All Active User",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResGetUserSuccess"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/myprofile": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Endpoint untuk mendapatkan profile user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get My Profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Endpoint untuk Hard Delete User",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Delete User",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultMessageResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -277,30 +433,6 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.InputRegisterValid": {
-            "type": "object",
-            "required": [
-                "email",
-                "password",
-                "username"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "johndoe@example.com"
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 5,
-                    "example": "john123"
-                },
-                "username": {
-                    "type": "string",
-                    "minLength": 5,
-                    "example": "johndoe"
-                }
-            }
-        },
         "controllers.LoginError": {
             "type": "object",
             "properties": {
@@ -356,28 +488,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/controllers.UserResponse"
-                }
-            }
-        },
-        "controllers.RegisterFailed": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "Email atau Username sudah terdaftar"
-                }
-            }
-        },
-        "controllers.RegisterSuccess": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/controllers.UserResponse"
-                },
-                "message": {
-                    "type": "string",
-                    "example": "Register Berhasil"
+                    "$ref": "#/definitions/dto.UserResponse"
                 }
             }
         },
@@ -390,7 +501,76 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.UserResponse": {
+        "dto.DefaultMessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Token Invalid"
+                }
+            }
+        },
+        "dto.InputRegisterValid": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "johndoe@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 5,
+                    "example": "john123"
+                },
+                "username": {
+                    "type": "string",
+                    "minLength": 5,
+                    "example": "johndoe"
+                }
+            }
+        },
+        "dto.RegisterFailed": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Email atau Username sudah terdaftar"
+                }
+            }
+        },
+        "dto.ResGetUserSuccess": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.UserResponse"
+                    }
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Berhasil"
+                }
+            }
+        },
+        "dto.ResponseSuccess": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.UserResponse"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Register Berhasil"
+                }
+            }
+        },
+        "dto.UserResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -436,12 +616,12 @@ const docTemplate = `{
                 "wallet": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/controllers.WalletResponse"
+                        "$ref": "#/definitions/dto.WalletResponse"
                     }
                 }
             }
         },
-        "controllers.WalletResponse": {
+        "dto.WalletResponse": {
             "type": "object",
             "properties": {
                 "balance": {

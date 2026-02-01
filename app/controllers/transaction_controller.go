@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"cashflow-backend/app/dto"
 	"cashflow-backend/app/models"
 	"cashflow-backend/pkg/configs"
 	"strconv"
@@ -15,14 +16,6 @@ import (
 )
 
 
-type TransactionInput struct {
-    WalletID    string  `json:"wallet_id" validate:"required"` 
-    Title       string  `json:"title" validate:"required"`
-    Amount      float64 `json:"amount" validate:"required"`
-    CategoryID  string    `json:"category_id" validate:"required,uuid"` 
-    Description string  `json:"description"`
-    Date        time.Time  `json:"date"`//validate:"required"` nti tambahin kalo udh ada frontend
-}
 
 
 
@@ -32,7 +25,7 @@ func CreateTransaction(c *fiber.Ctx) error {
         return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
     }
 
-    var input TransactionInput
+    var input dto.TransactionInput
     if err := c.BodyParser(&input); err != nil {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format data salah"})
     }
@@ -127,7 +120,7 @@ func CreateTransaction(c *fiber.Ctx) error {
 }
 
 func GetTransactions(c *fiber.Ctx) error {
-	var results []WalletResponse
+	var results []dto.WalletResponse
 	
 	if err := configs.DB.Model(&models.Wallet{}).Find(&results).Error; err != nil {
         return c.Status(500).JSON(fiber.Map{"error": "Gagal mengambil data"})

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"cashflow-backend/app/dto"
 	"cashflow-backend/app/models"
 	"cashflow-backend/pkg/configs"
 	"fmt"
@@ -13,57 +14,21 @@ import (
 
 var validate = validator.New()
 
-type InputRegisterValid struct {
-    Username string `json:"username" validate:"required,min=5,alphanum" example:"johndoe"`
-    Email    string `json:"email" validate:"required,email" example:"johndoe@example.com"`
-    Password string `json:"password" validate:"required,min=5" example:"john123"`
-}
-
-type UserResponse struct {
-    UserID           string           `json:"user_id" example:"a0b1c2d3-e4f5-g6h7-i8j9-k0l1m2n3"`
-    Username         string           `json:"username" example:"JohnDoe"`
-    Email            string           `json:"email" example:"johndoe@example.com"`
-    UserRole         models.UserRole  `json:"user_role" example:"3"` 
-    RoleText         string           `json:"role_text" example:"User"`
-    SubscriptionPlan string           `json:"subscription_plan" example:"free"`
-    SubscriptionExp  *time.Time       `json:"subscription_exp" example:"2023-06-30T00:00:00Z"`
-    CreatedAt        time.Time        `json:"created_at" example:"2023-06-30T00:00:00Z"`
-    UpdatedAt        time.Time        `json:"updated_at" example:"2023-06-30T00:00:00Z"`
-    Wallets          []WalletResponse `json:"wallet"`
-}
-type UpgradePlanInput struct {
-    Plan string `json:"plan" validate:"required,oneof=premium gold"`
-}
-
-type WalletResponse struct {
-    WalletID string  `json:"wallet_id" example:"a0b1c2d3-e4f5-g6h7-i8j9-k0l1m2n3"`
-    Name     string  `json:"wallet_name" example:"wallet1"`
-    Balance  float64 `json:"balance" example:"100000"`
-    Currency string  `json:"currency" example:"IDR"`
-}
-type RegisterFailed struct {
-    Message string `json:"message" example:"Email atau Username sudah terdaftar"`
-}
-type RegisterSuccess struct {
-    Message string `json:"message" example:"Register Berhasil"`
-    Data    UserResponse `json:"data"`
-}
-
 // Register User
 // @Summary Register User
 // @Description Endpoint untuk register user
 // @Tags User
 // @Accept json
 // @Produce json
-// @Param request body InputRegisterValid true "Input Valid"
-// @Success 201 {object} RegisterSuccess  
-// @Failure 400 {object} RegisterFailed    
-// @Failure 409 {object} RegisterFailed
-// @Failure 500 {object} RegisterFailed
+// @Param request body dto.InputRegisterValid true "Input Valid"
+// @Success 201 {object} dto.ResponseSuccess  
+// @Failure 400 {object} dto.RegisterFailed    
+// @Failure 409 {object} dto.RegisterFailed
+// @Failure 500 {object} dto.RegisterFailed
 func RegisterUser(c *fiber.Ctx) error {
-    var input InputRegisterValid
+    var input dto.InputRegisterValid
     if err := c.BodyParser(&input); err != nil {
-        return c.Status(400).JSON(RegisterFailed{
+        return c.Status(fiber.StatusBadGateway).JSON(dto.RegisterFailed{
             Message: "Input Tidak Valid",
         })
     }
@@ -71,15 +36,15 @@ func RegisterUser(c *fiber.Ctx) error {
     // ... (Validasi Duplikat & Validator Struct tetap sama) ...
     var existingUser models.User
     if err := configs.DB.Where("email = ? OR username = ?", input.Email, input.Username).First(&existingUser).Error; err == nil {
-        return c.Status(409).JSON(RegisterFailed{
+        return c.Status(fiber.StatusConflict).JSON(dto.RegisterFailed{
             Message: "Email atau Username sudah terdaftar",
         })
     }
     if err := validate.Struct(input); err != nil {
-        return c.Status(400).JSON(
+        return c.Status(fiber.StatusBadRequest).JSON(
             // Debugging
             // fiber.Map{"error": "Data tidak lengkap", "detail": err.Error()},
-            RegisterFailed{
+            dto.RegisterFailed{
                 Message: "Data tidak lengkap",
             },
         )
@@ -108,10 +73,10 @@ func RegisterUser(c *fiber.Ctx) error {
     if err := tx.Create(&user).Error; err != nil {
         tx.Rollback()
         fmt.Println(err)
-        return c.Status(500).JSON(
+        return c.Status(fiber.StatusInternalServerError).JSON(
             // Debugging
             // fiber.Map{"message": "Gagal mendaftar", "error" : err.Error()},
-            RegisterFailed{
+            dto.RegisterFailed{
                 Message: "Gagal mendaftar",
             },
         )
@@ -123,7 +88,7 @@ func RegisterUser(c *fiber.Ctx) error {
         Balance:  0,
         Currency: "IDR",
     }
-    walletRes := WalletResponse{
+    walletRes := dto.WalletResponse{
         WalletID: defaultWallet.WalletID.String(), // Pastikan convert UUID ke string
         Name:     defaultWallet.Name,
         Balance:  defaultWallet.Balance,
@@ -132,10 +97,10 @@ func RegisterUser(c *fiber.Ctx) error {
 
     if err := tx.Create(&defaultWallet).Error; err != nil {
         tx.Rollback()
-        return c.Status(500).JSON(
+        return c.Status(fiber.StatusInternalServerError).JSON(
             // Debugging
             // fiber.Map{"error": "Gagal membuat wallet default"}
-            RegisterFailed{
+            dto.RegisterFailed{
                 Message: "Gagal membuat wallet default",
             },
         )
@@ -144,7 +109,7 @@ func RegisterUser(c *fiber.Ctx) error {
     tx.Commit()
 
     // user.Password = ""
-    userResponse := UserResponse{
+    userResponse := dto.UserResponse{
         UserID:           user.UserID.String(), // Convert UUID ke string
         Username:         user.Username,
         Email:            user.Email,
@@ -154,32 +119,50 @@ func RegisterUser(c *fiber.Ctx) error {
         SubscriptionExp:  user.SubscriptionExp,
         CreatedAt:        user.CreatedAt,
         UpdatedAt:        user.UpdatedAt,
-        Wallets:          []WalletResponse{walletRes}, // Masukin wallet tadi
+        Wallets:          []dto.WalletResponse{walletRes}, // Masukin wallet tadi
     }
-    return c.Status(201).JSON(
-        RegisterSuccess{
+    return c.Status(fiber.StatusCreated).JSON(
+        dto.ResponseSuccess{
             Message: "Register Berhasil",
             Data : userResponse,
         },
     )
 }
 
+// Get My Profile
+// @Summary Get My Profile
+// @Description Endpoint untuk mendapatkan profile user
+// @Tags User
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} dto.UserResponse
+// @Failure 400 {object} dto.DefaultMessageResponse
+// @Failure 401 {object} dto.DefaultMessageResponse
+// @Failure 404 {object} dto.DefaultMessageResponse
+// @Failure 500 {object} dto.DefaultMessageResponse
+// @Router /users/myprofile [get]
 func GetMyProfile(c *fiber.Ctx) error {
     userID, err := getUserIDFromToken(c)
     if err != nil {
-        return c.Status(400).JSON(fiber.Map{"error": "Token rusak"})
+        return c.Status(fiber.StatusBadRequest).JSON(dto.DefaultMessageResponse{
+            Message : "Token Invalid",
+        })
     }
 
     var user models.User
     result := configs.DB.Preload("Wallets").First(&user, "user_id = ?", userID)
     if result.Error != nil {
-        return c.Status(404).JSON(fiber.Map{"error": "User tidak ditemukan"})
+        return c.Status(fiber.StatusNotFound).JSON(dto.DefaultMessageResponse{
+            Message : "User Not Found",
+        },
+        )
     }
 
     // Mapping Wallet Response
-    var walletRes []WalletResponse
+    var walletRes []dto.WalletResponse
     for _, w := range user.Wallets {
-        walletRes = append(walletRes, WalletResponse{
+        walletRes = append(walletRes, dto.WalletResponse{
             WalletID: w.WalletID.String(),
             Name:     w.Name,
             Balance:  w.Balance,
@@ -202,7 +185,7 @@ func GetMyProfile(c *fiber.Ctx) error {
     //     }
     // }
 
-    response := UserResponse{
+    response := dto.UserResponse{
         UserID:           user.UserID.String(),
         Email:            user.Email,
         Username:         user.Username,
@@ -214,35 +197,54 @@ func GetMyProfile(c *fiber.Ctx) error {
         RoleText:         user.UserRole.String(),
         Wallets:          walletRes,
     }
-    return c.JSON(response)
+    return c.Status(fiber.StatusOK).JSON(response)
 }
 
+// GetAllActiveUser
+// @Summary Get All Active User
+// @Description Endpoint untuk mendapatkan semua user aktif
+// @Tags User
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} dto.ResGetUserSuccess
+// @Failure 400 {object} dto.DefaultMessageResponse
+// @Failure 401 {object} dto.DefaultMessageResponse
+// @Failure 404 {object} dto.DefaultMessageResponse
+// @Failure 500 {object} dto.DefaultMessageResponse
+// @Router /users [get]
 func GetAllActiveUser(c *fiber.Ctx) error {
     userId, err := getUserIDFromToken(c)
     if err != nil {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid token"})
+        return c.Status(fiber.StatusBadRequest).JSON(dto.DefaultMessageResponse{
+            Message : "Token Invalid",
+        })
     }
 
     var requestor models.User
     if err := configs.DB.First(&requestor, "user_id = ?", userId).Error; err != nil {
-        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Unauthorized"})
+        return c.Status(fiber.StatusUnauthorized).JSON(dto.DefaultMessageResponse{
+            Message : "Unauthorized",
+        })
     }
 
-    // FIX 3: Validasi Role (Admin & Owner boleh akses)
+    // Validasi Role (Admin & Owner boleh akses)
     // Cek nil dulu, baru cek value
     // Logic: Kalau role > Admin (berarti User Biasa/3), tolak.
     if requestor.UserRole == nil || *requestor.UserRole > models.UserAdmin {
-        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-            "message": "Unauthorized: Only Admin/Owner allowed",
+        return c.Status(fiber.StatusUnauthorized).JSON(dto.DefaultMessageResponse{
+            Message : "Only Admin & Owner can access",
         })
     }
    
     var users []models.User
     if err := configs.DB.Preload("Wallets").Find(&users).Error; err != nil {
-        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Failed to fetch users"})
+        return c.Status(fiber.StatusInternalServerError).JSON(dto.DefaultMessageResponse{
+            Message : "Internal Server Error",
+        })
     }
 
-    var res []UserResponse
+    var res []dto.UserResponse
     for _, v := range users {
         
         // FIX 4: Handle pointer role di dalam loop
@@ -254,16 +256,16 @@ func GetAllActiveUser(c *fiber.Ctx) error {
             if rVal == models.UserAdmin { rTxt = "Admin" }
         }
 
-        var walletRes []WalletResponse
+        var walletRes []dto.WalletResponse
         for _, w := range v.Wallets {
-            walletRes = append(walletRes, WalletResponse{
+            walletRes = append(walletRes, dto.WalletResponse{
                 WalletID: w.WalletID.String(),
                 Name:     w.Name,
                 Balance:  w.Balance,
                 Currency: w.Currency,
             })
         }
-        res = append(res, UserResponse{
+        res = append(res, dto.UserResponse{
             UserID:           v.UserID.String(),
             Email:            v.Email,
             Username:         v.Username,
@@ -277,20 +279,51 @@ func GetAllActiveUser(c *fiber.Ctx) error {
         })
     }
 
-    return c.JSON(fiber.Map{
-        "status": "success",
-        "data":   res,
+    return c.Status(fiber.StatusOK).JSON(dto.ResGetUserSuccess{
+        Message: "Fetch Success",
+        Data:    res,
     })
 }
 
-// ... DeleteUser sama saja, aman ...
+// Delete User
+// @Summary Delete User
+// @Description Endpoint untuk Hard Delete User
+// @Tags User
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} dto.DefaultMessageResponse
+// @Failure 400 {object} dto.DefaultMessageResponse
+// @Failure 401 {object} dto.DefaultMessageResponse
+// @Failure 404 {object} dto.DefaultMessageResponse
+// @Failure 500 {object} dto.DefaultMessageResponse
+// @Router /users/{id} [delete]
 func DeleteUser(c *fiber.Ctx) error {
+    reqID, err := getUserIDFromToken(c)
+    if err != nil {
+        return c.Status(fiber.StatusBadGateway).JSON(dto.DefaultMessageResponse{
+            Message : "Token Invalid",
+        })
+    }
+    var requestor *models.User
+    if err := configs.DB.First(&requestor, "user_id = ?", reqID).Error; err != nil {
+        return c.Status(fiber.StatusUnauthorized).JSON(dto.DefaultMessageResponse{
+            Message : "Unauthorized",
+        })
+    }
+    if *requestor.UserRole > models.UserAdmin {
+        return c.Status(fiber.StatusUnauthorized).JSON(dto.DefaultMessageResponse{
+            Message : "Only Admin can access",
+        })
+    }
+
     userId := c.Params("id")
     var user models.User
-
     // 1. Cek dulu usernya ada atau nggak (Opsional tapi bagus buat UX)
     if err := configs.DB.First(&user, "user_id = ?", userId).Error; err != nil {
-        return c.Status(404).JSON(fiber.Map{"error": "User not found"})
+        return c.Status(404).JSON(dto.DefaultMessageResponse{
+            Message: "User Tidak Ditemukan",
+        })
     }
 
     // 2. Lakukan HARD DELETE dengan Cascade
@@ -299,17 +332,20 @@ func DeleteUser(c *fiber.Ctx) error {
     result := configs.DB.Unscoped().Delete(&user)
 
     if result.Error != nil {
-        return c.Status(500).JSON(fiber.Map{
-            "error": "Gagal menghapus user", 
-            "detail": result.Error.Error(),
+        return c.Status(fiber.StatusInternalServerError).JSON(dto.FailureMessage{
+            Message : "Gagal Mengambil Data, Internal Server Error",
+            Error: result.Error.Error(),
+        
         })
     }
 
-    return c.JSON(fiber.Map{
+    return c.Status(fiber.StatusOK).JSON(fiber.Map{
         "status": "success",
         "message": "User dan seluruh datanya berhasil dihapus permanen",
     })
 }
+
+
 func UpgradeUserPlan(c *fiber.Ctx) error {
     // 1. Ambil User ID dari Token
     userID, err := getUserIDFromToken(c)
@@ -318,7 +354,7 @@ func UpgradeUserPlan(c *fiber.Ctx) error {
     }
 
     // 2. Parse Input Body
-    var input UpgradePlanInput
+    var input dto.UpgradePlanInput
     if err := c.BodyParser(&input); err != nil {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Format input salah"})
     }

@@ -39,24 +39,6 @@ definitions:
       type:
         type: string
     type: object
-  controllers.InputRegisterValid:
-    properties:
-      email:
-        example: johndoe@example.com
-        type: string
-      password:
-        example: john123
-        minLength: 5
-        type: string
-      username:
-        example: johndoe
-        minLength: 5
-        type: string
-    required:
-    - email
-    - password
-    - username
-    type: object
   controllers.LoginError:
     properties:
       error:
@@ -96,21 +78,7 @@ definitions:
         description: Kita pake string (Owner/Member) bukan angka
         type: string
       user:
-        $ref: '#/definitions/controllers.UserResponse'
-    type: object
-  controllers.RegisterFailed:
-    properties:
-      message:
-        example: Email atau Username sudah terdaftar
-        type: string
-    type: object
-  controllers.RegisterSuccess:
-    properties:
-      data:
-        $ref: '#/definitions/controllers.UserResponse'
-      message:
-        example: Register Berhasil
-        type: string
+        $ref: '#/definitions/dto.UserResponse'
     type: object
   controllers.ServerError:
     properties:
@@ -118,7 +86,55 @@ definitions:
         example: Server Error
         type: string
     type: object
-  controllers.UserResponse:
+  dto.DefaultMessageResponse:
+    properties:
+      message:
+        example: Token Invalid
+        type: string
+    type: object
+  dto.InputRegisterValid:
+    properties:
+      email:
+        example: johndoe@example.com
+        type: string
+      password:
+        example: john123
+        minLength: 5
+        type: string
+      username:
+        example: johndoe
+        minLength: 5
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  dto.RegisterFailed:
+    properties:
+      message:
+        example: Email atau Username sudah terdaftar
+        type: string
+    type: object
+  dto.ResGetUserSuccess:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.UserResponse'
+        type: array
+      message:
+        example: Berhasil
+        type: string
+    type: object
+  dto.ResponseSuccess:
+    properties:
+      data:
+        $ref: '#/definitions/dto.UserResponse'
+      message:
+        example: Register Berhasil
+        type: string
+    type: object
+  dto.UserResponse:
     properties:
       created_at:
         example: "2023-06-30T00:00:00Z"
@@ -150,10 +166,10 @@ definitions:
         type: string
       wallet:
         items:
-          $ref: '#/definitions/controllers.WalletResponse'
+          $ref: '#/definitions/dto.WalletResponse'
         type: array
     type: object
-  controllers.WalletResponse:
+  dto.WalletResponse:
     properties:
       balance:
         example: 100000
@@ -238,7 +254,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: User membuat grup baru dan otomatis menjadi owner.
+      description: Endpoint untuk User membuat grup baru dan otomatis menjadi group-owner.
       parameters:
       - description: Data Group (Minimal 1 member)
         in: body
@@ -328,6 +344,105 @@ paths:
       summary: Menambahkan anggota baru ke Group
       tags:
       - Groups
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Endpoint untuk mendapatkan semua user aktif
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResGetUserSuccess'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+      security:
+      - BearerAuth: []
+      summary: Get All Active User
+      tags:
+      - User
+  /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Endpoint untuk Hard Delete User
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete User
+      tags:
+      - User
+  /users/myprofile:
+    get:
+      consumes:
+      - application/json
+      description: Endpoint untuk mendapatkan profile user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.DefaultMessageResponse'
+      security:
+      - BearerAuth: []
+      summary: Get My Profile
+      tags:
+      - User
 securityDefinitions:
   BearerAuth:
     description: 'Masukkan token dengan format: "Bearer <token_jwt_disini>"'
